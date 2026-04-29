@@ -4,8 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -17,26 +19,45 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.tooling.preview.PreviewScreenSizes
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.safetyvestinator.ui.theme.SafetyVestinatorTheme
+import com.example.safetyvestinator.viewmodel.BleViewModel
+import com.example.safetyvestinator.viewmodel.SettingsViewModel
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SafetyVestinatorTheme {
-                SafetyVestinatorApp()
+            val settingsViewModel: SettingsViewModel = viewModel()
+            val bleViewModel: BleViewModel = viewModel()
+            val themeMode by settingsViewModel.themeMode.collectAsStateWithLifecycle()
+
+            val isDark = when (themeMode) {
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+            SafetyVestinatorTheme(darkTheme = isDark) {
+                SafetyVestinatorApp(
+                    settingsViewModel = settingsViewModel,
+                    bleViewModel = bleViewModel
+                )
             }
         }
     }
 }
 
-@PreviewScreenSizes
+enum class ThemeMode { LIGHT, DARK, SYSTEM }
+
 @Composable
-fun SafetyVestinatorApp() {
+fun SafetyVestinatorApp(
+    settingsViewModel: SettingsViewModel,
+    bleViewModel: BleViewModel
+) {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
 
     NavigationSuiteScaffold(
@@ -46,7 +67,8 @@ fun SafetyVestinatorApp() {
                     icon = {
                         Icon(
                             painterResource(it.icon),
-                            contentDescription = it.label
+                            contentDescription = it.label,
+                            modifier = Modifier.size(48.dp)
                         )
                     },
                     label = { Text(it.label) },
@@ -57,10 +79,16 @@ fun SafetyVestinatorApp() {
         }
     ) {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            Greeting(
-                name = "Android",
-                modifier = Modifier.padding(innerPadding)
-            )
+            val screenModifier = Modifier.padding(innerPadding)
+            when (currentDestination) {
+                AppDestinations.HOME -> HomeScreen(screenModifier)
+                AppDestinations.CALENDAR -> CalendarScreen(screenModifier)
+                AppDestinations.SETTINGS -> SettingsScreen(
+                    modifier = screenModifier,
+                    settingsViewModel = settingsViewModel,
+                    bleViewModel = bleViewModel
+                )
+            }
         }
     }
 }
@@ -69,23 +97,7 @@ enum class AppDestinations(
     val label: String,
     val icon: Int,
 ) {
+    CALENDAR("Calendar", R.drawable.ic_calendar),
     HOME("Home", R.drawable.ic_home),
-    FAVORITES("Favorites", R.drawable.ic_favorite),
-    PROFILE("Profile", R.drawable.ic_account_box),
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    SafetyVestinatorTheme {
-        Greeting("Android")
-    }
+    SETTINGS("Settings", R.drawable.ic_account_box),
 }

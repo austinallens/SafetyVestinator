@@ -1,14 +1,23 @@
+@file:Suppress("UseTomlInstead")
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
 
+@Suppress("OldTargetApi")
 android {
     namespace = "com.example.safetyvestinator"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
         }
+
+    compileOptions{
+        isCoreLibraryDesugaringEnabled = true
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
     }
 
     defaultConfig {
@@ -49,6 +58,13 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation("androidx.compose.material:material-icons-extended") // Used for Calendar Chevrons
+    implementation("androidx.datastore:datastore-preferences:1.2.1") // Used for Data Persistence
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0") // Used for Data Persistence
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0") // Used for Data Persistence
+    implementation("com.kizitonwose.calendar:compose:2.10.1") // Calendar Library
+    implementation("com.patrykandpatrick.vico:compose-m3:3.1.0") // For Graph
+    implementation("com.google.accompanist:accompanist-permissions:0.37.3") // For BLE Use
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
@@ -56,4 +72,5 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
