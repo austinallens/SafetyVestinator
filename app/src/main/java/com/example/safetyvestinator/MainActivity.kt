@@ -25,7 +25,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.safetyvestinator.ui.theme.SafetyVestinatorTheme
 import com.example.safetyvestinator.viewmodel.BleViewModel
 import com.example.safetyvestinator.viewmodel.SettingsViewModel
-
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import com.example.safetyvestinator.data.NotificationHelper
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,6 +43,15 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.DARK -> true
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
+
+            val context = LocalContext.current
+            LaunchedEffect(Unit) {
+                NotificationHelper.ensureChannel(context)
+                bleViewModel.impacts.collect {
+                    NotificationHelper.showImpact(context)
+                }
+            }
+
             SafetyVestinatorTheme(darkTheme = isDark) {
                 SafetyVestinatorApp(
                     settingsViewModel = settingsViewModel,
@@ -81,7 +92,10 @@ fun SafetyVestinatorApp(
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             val screenModifier = Modifier.padding(innerPadding)
             when (currentDestination) {
-                AppDestinations.HOME -> HomeScreen(screenModifier)
+                AppDestinations.HOME -> HomeScreen(
+                    modifier = screenModifier,
+                    bleViewModel = bleViewModel
+                )
                 AppDestinations.CALENDAR -> CalendarScreen(screenModifier)
                 AppDestinations.SETTINGS -> SettingsScreen(
                     modifier = screenModifier,
