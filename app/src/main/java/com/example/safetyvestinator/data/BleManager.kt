@@ -56,9 +56,6 @@ class BleManager(private val context: Context) {
     private val _state = MutableStateFlow(ConnectionState.DISCONNECTED)
     val state = _state.asStateFlow()
 
-    private val _reading = MutableStateFlow<SensorReading?>(null)
-    val reading = _reading.asStateFlow()
-
     private val _impacts = MutableSharedFlow<Long>(extraBufferCapacity = 8)
     val impacts = _impacts.asSharedFlow()
 
@@ -157,7 +154,6 @@ class BleManager(private val context: Context) {
     private fun handleCharacteristicValue(uuid: UUID, value: ByteArray) {
         when (uuid) {
             SENSOR_CHAR -> parseSensor(value)?.let { reading ->
-                _reading.value = reading
                 _recentReadings.update { current ->
                     (current + reading).takeLast(maxBufferSize)
                 }

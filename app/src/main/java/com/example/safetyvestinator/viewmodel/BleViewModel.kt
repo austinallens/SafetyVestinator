@@ -9,7 +9,6 @@ class BleViewModel(application: Application) : AndroidViewModel(application) {
     private val ble = BleManager(application)
 
     val state = ble.state
-    val reading = ble.reading
     val impacts = ble.impacts
     val recentReadings = ble.recentReadings
     val location = ble.location
