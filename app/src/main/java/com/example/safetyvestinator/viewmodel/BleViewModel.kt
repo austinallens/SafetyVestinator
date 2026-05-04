@@ -12,6 +12,7 @@ class BleViewModel(application: Application) : AndroidViewModel(application) {
     val reading = ble.reading
     val impacts = ble.impacts
     val recentReadings = ble.recentReadings
+    val location = ble.location
 
     fun connect() = ble.startScan()
     fun disconnect() = ble.disconnect()

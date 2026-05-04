@@ -28,12 +28,19 @@ import java.util.UUID
 private val SERVICE_UUID    = UUID.fromString("12345678-1234-5678-1234-56789abcdef0")
 private val SENSOR_CHAR     = UUID.fromString("12345678-1234-5678-1234-56789abcdef1")
 private val IMPACT_CHAR     = UUID.fromString("12345678-1234-5678-1234-56789abcdef2")
+private val GPS_CHAR = UUID.fromString("12345678-1234-5678-1234-56789abcdef3")
 private val CCCD_DESCRIPTOR = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
 data class SensorReading(
     val ax: Float, val ay: Float, val az: Float,
     val gx: Float, val gy: Float, val gz: Float,
     val tempF: Float
+)
+
+data class GpsLocation(
+    val latitude: Double,
+    val longitude: Double,
+    val receivedAtMillis: Long
 )
 
 enum class ConnectionState { DISCONNECTED, SCANNING, CONNECTING, CONNECTED }
@@ -59,6 +66,9 @@ class BleManager(private val context: Context) {
     val recentReadings = _recentReadings.asStateFlow()
 
     private val maxBufferSize = 100 // About 10 seconds at 10 Hertz
+
+    private val _location = MutableStateFlow<GpsLocation?>(null)
+    val location = _location.asStateFlow()
 
     fun startScan() {
         val scanner = adapter?.bluetoothLeScanner ?: return
@@ -121,6 +131,7 @@ class BleManager(private val context: Context) {
             val service = g.getService(SERVICE_UUID) ?: return
             service.getCharacteristic(SENSOR_CHAR)?.let { enableNotifications(g, it) }
             service.getCharacteristic(IMPACT_CHAR)?.let { enableNotifications(g, it) }
+            service.getCharacteristic(GPS_CHAR)?.let { enableNotifications(g, it) }
         }
 
         // API 33+ signature
@@ -152,6 +163,7 @@ class BleManager(private val context: Context) {
                 }
             }
             IMPACT_CHAR -> _impacts.tryEmit(System.currentTimeMillis())
+            GPS_CHAR -> parseGps(value)?.let { _location.value = it }
         }
     }
 
@@ -176,5 +188,13 @@ class BleManager(private val context: Context) {
             gx = buf.float, gy = buf.float, gz = buf.float,
             tempF = buf.float
         )
+    }
+
+    private fun parseGps(data: ByteArray): GpsLocation? {
+        if (data.size < 8) return null
+        val buf = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN)
+        val lat = buf.float.toDouble()
+        val lng = buf.float.toDouble()
+        return GpsLocation(lat, lng, System.currentTimeMillis())
     }
 }

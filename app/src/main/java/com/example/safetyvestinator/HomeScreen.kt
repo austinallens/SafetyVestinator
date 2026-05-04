@@ -35,6 +35,7 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
+import com.example.safetyvestinator.data.GpsLocation
 
 @Composable
 fun HomeScreen(
@@ -101,6 +102,9 @@ fun HomeScreen(
                 }
             }
         }
+
+        val location by bleViewModel.location.collectAsStateWithLifecycle()
+        LocationCard(location = location)
     }
 }
 
@@ -149,5 +153,47 @@ private fun LatestReadingRow(reading: SensorReading) {
             text = "Temp:  %.1f °F".format(reading.tempF),
             style = MaterialTheme.typography.bodyMedium
         )
+    }
+}
+
+@Composable
+private fun LocationCard(location: GpsLocation?) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Location",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            if (location == null) {
+                Text(
+                    text = "Waiting for GPS fix...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                val ageMs = System.currentTimeMillis() - location.receivedAtMillis
+                val ageText = when {
+                    ageMs < 5_000 -> "just now"
+                    ageMs < 60_000 -> "${ageMs / 1000}s ago"
+                    ageMs < 3_600_000 -> "${ageMs / 60_000}m ago"
+                    else -> "${ageMs / 3_600_000}h ago"
+                }
+                Text(
+                    text = "%.6f, %.6f".format(location.latitude, location.longitude),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "Updated $ageText",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
