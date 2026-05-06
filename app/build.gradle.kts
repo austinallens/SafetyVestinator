@@ -62,8 +62,11 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.2.1") // Used for Data Persistence
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0") // Used for Data Persistence
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0") // Used for Data Persistence
+    implementation("androidx.preference:preference-ktx:1.2.1") // Used for Map
     implementation("com.kizitonwose.calendar:compose:2.10.1") // Calendar Library
-    implementation("com.patrykandpatrick.vico:compose-m3:3.1.0") // For Graph
+    implementation("com.patrykandpatrick.vico:compose-m3:3.1.0")
+    implementation(libs.androidx.material3) // For Graph
+    implementation("org.osmdroid:osmdroid-android:6.1.20") // For Map
     implementation("com.google.accompanist:accompanist-permissions:0.37.3") // For BLE Use
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

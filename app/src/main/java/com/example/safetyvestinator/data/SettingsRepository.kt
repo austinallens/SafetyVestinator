@@ -14,7 +14,6 @@ class SettingsRepository(private val context: Context) {
 
     private object Keys {
         val THEME_MODE = stringPreferencesKey("theme_mode")
-        val DEVICE_NAME = stringPreferencesKey("device_name")
     }
 
     val themeMode: Flow<ThemeMode> = context.dataStore.data.map { prefs ->
@@ -25,19 +24,9 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
-    val deviceName: Flow<String> = context.dataStore.data.map { prefs ->
-        prefs[Keys.DEVICE_NAME] ?: "My Vest"
-    }
-
     suspend fun setThemeMode(mode: ThemeMode) {
         context.dataStore.edit { prefs ->
             prefs[Keys.THEME_MODE] = mode.name
-        }
-    }
-
-    suspend fun setDeviceName(name: String) {
-        context.dataStore.edit { prefs ->
-            prefs[Keys.DEVICE_NAME] = name
         }
     }
 }

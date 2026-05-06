@@ -7,8 +7,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -16,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -36,6 +41,7 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
 import com.example.safetyvestinator.data.GpsLocation
+import com.example.safetyvestinator.ui.VestMapView
 
 @Composable
 fun HomeScreen(
@@ -53,6 +59,7 @@ fun HomeScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -170,13 +177,38 @@ private fun LocationCard(location: GpsLocation?) {
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-            if (location == null) {
-                Text(
-                    text = "Waiting for GPS fix...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(400.dp)
+                    .clip(RoundedCornerShape(12.dp))
+            ) {
+                VestMapView(
+                    location = location,
+                    modifier = Modifier.fillMaxSize()
                 )
-            } else {
+                if (location == null) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(8.dp)
+                    ) {
+                        Text(
+                            text = "Waiting for GPS fix…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+            if (location != null) {
+                Text(
+                    text = "%.6f, %.6f".format(location.latitude, location.longitude),
+                    style = MaterialTheme.typography.bodyMedium
+                )
                 val ageMs = System.currentTimeMillis() - location.receivedAtMillis
                 val ageText = when {
                     ageMs < 5_000 -> "just now"
@@ -184,10 +216,6 @@ private fun LocationCard(location: GpsLocation?) {
                     ageMs < 3_600_000 -> "${ageMs / 60_000}m ago"
                     else -> "${ageMs / 3_600_000}h ago"
                 }
-                Text(
-                    text = "%.6f, %.6f".format(location.latitude, location.longitude),
-                    style = MaterialTheme.typography.bodyMedium
-                )
                 Text(
                     text = "Updated $ageText",
                     style = MaterialTheme.typography.bodySmall,

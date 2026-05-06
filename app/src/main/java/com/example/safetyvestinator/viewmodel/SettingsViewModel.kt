@@ -20,18 +20,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             initialValue = ThemeMode.SYSTEM
         )
 
-    val deviceName: StateFlow<String> = repo.deviceName
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = "My Vest"
-        )
-
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { repo.setThemeMode(mode) }
-    }
-
-    fun setDeviceName(name: String) {
-        viewModelScope.launch { repo.setDeviceName(name) }
     }
 }

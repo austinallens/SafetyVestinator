@@ -17,7 +17,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -43,7 +42,6 @@ fun SettingsScreen(
     bleViewModel: BleViewModel
     ) {
     val themeMode by settingsViewModel.themeMode.collectAsStateWithLifecycle()
-    val deviceName by settingsViewModel.deviceName.collectAsStateWithLifecycle()
     val connectionState by bleViewModel.state.collectAsStateWithLifecycle()
     val permissions = rememberBlePermissionsState()
 
@@ -88,13 +86,6 @@ fun SettingsScreen(
                     }
                 )
             }
-            OutlinedTextField(
-                value = deviceName,
-                onValueChange = settingsViewModel::setDeviceName,
-                label = { Text("Device Name") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
         }
     }
 }
