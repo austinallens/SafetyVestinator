@@ -83,6 +83,7 @@ dependencies {
     implementation(libs.androidx.material3) // For Graph
     implementation("org.osmdroid:osmdroid-android:6.1.20") // For Map
     implementation("com.google.accompanist:accompanist-permissions:0.37.3") // For BLE Use
+    implementation("com.google.android.gms:play-services-location:21.3.0") // For Phone GPS
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
