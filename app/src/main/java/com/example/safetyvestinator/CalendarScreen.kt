@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kizitonwose.calendar.compose.HorizontalCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
 import com.kizitonwose.calendar.core.CalendarDay
@@ -46,9 +47,20 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
+import com.example.safetyvestinator.data.ImpactRepository
+import kotlinx.coroutines.flow.flowOf
+import com.example.safetyvestinator.data.ImpactRecord
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import java.time.Instant
+import java.time.ZoneId
 
 @Composable
-fun CalendarScreen(modifier: Modifier = Modifier) {
+fun CalendarScreen(
+    modifier: Modifier = Modifier,
+    impactRepo: ImpactRepository
+) {
     val today = remember { LocalDate.now() }
     val currentMonth = remember { YearMonth.now() }
     val startMonth = remember { currentMonth.minusMonths(24) }
@@ -65,6 +77,11 @@ fun CalendarScreen(modifier: Modifier = Modifier) {
 
     var selectedDate by remember { mutableStateOf<LocalDate?>(today) }
     val coroutineScope = rememberCoroutineScope()
+
+    val impactsForDay by remember(selectedDate) {
+        selectedDate?.let { impactRepo.observeImpactsForDay(it) }
+            ?: flowOf(emptyList())
+    }.collectAsStateWithLifecycle(initialValue = emptyList())
 
     val visibleMonth = calendarState.firstVisibleMonth.yearMonth
     val monthFormatter = remember {
@@ -127,18 +144,30 @@ fun CalendarScreen(modifier: Modifier = Modifier) {
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
+            if (impactsForDay.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp),
+                        .height(120.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No data recorded for this day",
+                        text = "No impacts recorded for this day.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                ) {
+                    items(impactsForDay) { impact ->
+                        ImpactRow(impact)
+                    }
+                }
+            }
             }
         }
     }
@@ -224,5 +253,54 @@ private fun Day(
             color = textColor,
             style = MaterialTheme.typography.bodyMedium
         )
+    }
+}
+
+@Composable
+private fun ImpactRow(impact: ImpactRecord) {
+    val timeFormatter = remember {
+        DateTimeFormatter.ofPattern("h:mm:ss a", Locale.getDefault())
+    }
+    val time = remember(impact.timestamp) {
+        Instant.ofEpochMilli(impact.timestamp)
+            .atZone(ZoneId.systemDefault())
+            .format(timeFormatter)
+    }
+    val magnitude = remember(impact) {
+        kotlin.math.sqrt(
+            (impact.ax * impact.ax + impact.ay * impact.ay + impact.az * impact.az).toDouble()
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        Text(
+            text = time,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "Acceleration: %.2f m/s² total | Temp: %.1f°F".format(magnitude, impact.tempF),
+            style = MaterialTheme.typography.bodySmall
+        )
+        if (impact.latitude != null && impact.longitude != null) {
+            Text(
+                text = "Location: %.6f, %.6f".format(
+                    impact.latitude,
+                    impact.longitude
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            Text(
+                text = "Location: not available",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }

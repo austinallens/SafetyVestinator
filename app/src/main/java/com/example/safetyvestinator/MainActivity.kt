@@ -33,6 +33,8 @@ import org.osmdroid.config.Configuration
 import androidx.preference.PreferenceManager
 import com.example.safetyvestinator.data.ConnectionState
 import com.example.safetyvestinator.data.EmailSender
+import com.example.safetyvestinator.data.ImpactRepository
+import androidx.compose.runtime.remember
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,19 +57,6 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
-            }
-
-            val context = LocalContext.current
-            LaunchedEffect(Unit) {
-                NotificationHelper.ensureChannel(context)
-                bleViewModel.impacts.collect {
-                    Log.d("MainActivity", "Impact event received")
-                    NotificationHelper.showImpact(context)
-                    EmailSender.sendImpactAlert(
-                        recipientEmail = settingsViewModel.recipientEmail.value,
-                        location = bleViewModel.location.value
-                    )
-                }
             }
 
             SafetyVestinatorTheme(darkTheme = isDark) {
@@ -98,6 +87,29 @@ fun SafetyVestinatorApp(
         }
     }
 
+    val context = LocalContext.current
+
+    val impactRepo = remember { ImpactRepository(context) }
+
+    LaunchedEffect(Unit) {
+        NotificationHelper.ensureChannel(context)
+        bleViewModel.impacts.collect { timestamp ->
+            // Record to Database First
+            impactRepo.recordImpact(
+                timestamp = timestamp,
+                location = bleViewModel.location.value,
+                latestReading = bleViewModel.recentReadings.value.lastOrNull()
+            )
+
+            Log.d("MainActivity", "Impact event received")
+            NotificationHelper.showImpact(context)
+            EmailSender.sendImpactAlert(
+                recipientEmail = settingsViewModel.recipientEmail.value,
+                location = bleViewModel.location.value
+            )
+        }
+    }
+
     NavigationSuiteScaffold(
         navigationSuiteItems = {
             AppDestinations.entries.forEach {
@@ -124,7 +136,10 @@ fun SafetyVestinatorApp(
                     bleViewModel = bleViewModel,
                     debugMode = debugMode
                 )
-                AppDestinations.CALENDAR -> CalendarScreen(screenModifier)
+                AppDestinations.CALENDAR -> CalendarScreen(
+                    modifier = screenModifier,
+                    impactRepo = impactRepo
+                )
                 AppDestinations.SETTINGS -> SettingsScreen(
                     modifier = screenModifier,
                     settingsViewModel = settingsViewModel,

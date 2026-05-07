@@ -33,6 +33,8 @@ private val IMPACT_CHAR     = UUID.fromString("12345678-1234-5678-1234-56789abcd
 private val GPS_CHAR = UUID.fromString("12345678-1234-5678-1234-56789abcdef3")
 private val CONFIG_CHAR = UUID.fromString("12345678-1234-5678-1234-56789abcdef4")
 private val CCCD_DESCRIPTOR = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+private var lastImpactMillis: Long = 0L
+private val impactDebounceMillis = 5_000L
 
 data class SensorReading(
     val ax: Float, val ay: Float, val az: Float,
@@ -214,8 +216,14 @@ class BleManager(private val context: Context) {
                 }
             }
             IMPACT_CHAR -> {
-                Log.d("BleManager", "IMPACT_CHAR matched, emitting")
-                _impacts.tryEmit(System.currentTimeMillis())
+                val now = System.currentTimeMillis()
+                if (now - lastImpactMillis >= impactDebounceMillis) {
+                    lastImpactMillis = now
+                    _impacts.tryEmit(now)
+                    Log.d("BleManager", "Impact accepted")
+                } else {
+                    Log.d("BleManager", "Impact suppressed (within ${impactDebounceMillis}ms cooldown)")
+                }
             }
             GPS_CHAR -> parseGps(value)?.let { _location.value = it }
         }
