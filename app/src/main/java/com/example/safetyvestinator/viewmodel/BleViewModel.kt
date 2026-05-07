@@ -15,6 +15,8 @@ class BleViewModel(application: Application) : AndroidViewModel(application) {
 
     fun connect() = ble.startScan()
     fun disconnect() = ble.disconnect()
+    fun setDebugMode(enabled: Boolean) = ble.setDebugMode(enabled)
+    fun fireTestImpact() = ble.fireTestImpact()
 
     override fun onCleared() {
         super.onCleared()

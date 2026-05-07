@@ -16,6 +16,7 @@ import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.os.Build
 import android.os.ParcelUuid
+import android.util.Log
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -25,10 +26,12 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
 
+private val pendingNotificationSetups = mutableListOf<BluetoothGattCharacteristic>()
 private val SERVICE_UUID    = UUID.fromString("12345678-1234-5678-1234-56789abcdef0")
 private val SENSOR_CHAR     = UUID.fromString("12345678-1234-5678-1234-56789abcdef1")
 private val IMPACT_CHAR     = UUID.fromString("12345678-1234-5678-1234-56789abcdef2")
 private val GPS_CHAR = UUID.fromString("12345678-1234-5678-1234-56789abcdef3")
+private val CONFIG_CHAR = UUID.fromString("12345678-1234-5678-1234-56789abcdef4")
 private val CCCD_DESCRIPTOR = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
 data class SensorReading(
@@ -52,6 +55,8 @@ class BleManager(private val context: Context) {
         (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
 
     private var gatt: BluetoothGatt? = null
+
+    private var configCharacteristic: BluetoothGattCharacteristic? = null
 
     private val _state = MutableStateFlow(ConnectionState.DISCONNECTED)
     val state = _state.asStateFlow()
@@ -89,6 +94,32 @@ class BleManager(private val context: Context) {
         }
     }
 
+    fun setDebugMode(enabled: Boolean) {
+        val ch = configCharacteristic ?: return
+        writeCharacteristicCompat(ch, byteArrayOf(if (enabled) 0x01 else 0x00))
+    }
+
+    fun fireTestImpact() {
+        val ch = configCharacteristic ?: run {
+            Log.e("BleManager", "fireTestImpact: configCharacteristic is null")
+            return
+        }
+        Log.d("BleManager", "fireTestImpact: writing 0xFF")
+        writeCharacteristicCompat(ch, byteArrayOf(0xFF.toByte()))
+    }
+
+    private fun writeCharacteristicCompat(ch: BluetoothGattCharacteristic, data: ByteArray) {
+        val g = gatt ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            g.writeCharacteristic(ch, data, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
+        } else {
+            @Suppress("DEPRECATION")
+            ch.value = data
+            @Suppress("DEPRECATION")
+            g.writeCharacteristic(ch)
+        }
+    }
+
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             adapter?.bluetoothLeScanner?.stopScan(this)
@@ -116,6 +147,7 @@ class BleManager(private val context: Context) {
                     _state.value = ConnectionState.DISCONNECTED
                     g.close()
                     gatt = null
+                    configCharacteristic = null
                 }
             }
         }
@@ -126,9 +158,29 @@ class BleManager(private val context: Context) {
 
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
             val service = g.getService(SERVICE_UUID) ?: return
-            service.getCharacteristic(SENSOR_CHAR)?.let { enableNotifications(g, it) }
-            service.getCharacteristic(IMPACT_CHAR)?.let { enableNotifications(g, it) }
-            service.getCharacteristic(GPS_CHAR)?.let { enableNotifications(g, it) }
+
+            configCharacteristic = service.getCharacteristic(CONFIG_CHAR)
+
+            pendingNotificationSetups.clear()
+            listOf(SENSOR_CHAR, IMPACT_CHAR, GPS_CHAR).forEach { uuid ->
+                service.getCharacteristic(uuid)?.let { pendingNotificationSetups.add(it) }
+            }
+            processNextNotificationSetup(g)
+        }
+
+        private fun processNextNotificationSetup(g: BluetoothGatt) {
+            if (pendingNotificationSetups.isEmpty()) return
+            val ch = pendingNotificationSetups.removeAt(0)
+            enableNotifications(g, ch)
+        }
+
+        override fun onDescriptorWrite(
+            g: BluetoothGatt,
+            descriptor: BluetoothGattDescriptor,
+            status: Int
+        ) {
+            Log.d("BleManager", "onDescriptorWrite: status=$status uuid=${descriptor.characteristic.uuid}")
+            processNextNotificationSetup(g)
         }
 
         // API 33+ signature
@@ -137,6 +189,7 @@ class BleManager(private val context: Context) {
             ch: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
+            Log.d("BleManager", "onCharacteristicChanged (API 33+): uuid=${ch.uuid}, ${value.size} bytes")
             handleCharacteristicValue(ch.uuid, value)
         }
 
@@ -146,19 +199,24 @@ class BleManager(private val context: Context) {
             g: BluetoothGatt,
             ch: BluetoothGattCharacteristic
         ) {
+            Log.d("BleManager", "onCharacteristicChanged (pre-33): uuid=${ch.uuid}")
             @Suppress("DEPRECATION")
             handleCharacteristicValue(ch.uuid, ch.value)
         }
     }
 
     private fun handleCharacteristicValue(uuid: UUID, value: ByteArray) {
+        Log.d("BleManager", "handleCharacteristicValue: $uuid")
         when (uuid) {
             SENSOR_CHAR -> parseSensor(value)?.let { reading ->
                 _recentReadings.update { current ->
                     (current + reading).takeLast(maxBufferSize)
                 }
             }
-            IMPACT_CHAR -> _impacts.tryEmit(System.currentTimeMillis())
+            IMPACT_CHAR -> {
+                Log.d("BleManager", "IMPACT_CHAR matched, emitting")
+                _impacts.tryEmit(System.currentTimeMillis())
+            }
             GPS_CHAR -> parseGps(value)?.let { _location.value = it }
         }
     }

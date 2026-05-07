@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
@@ -17,15 +18,18 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.safetyvestinator.data.ConnectionState
@@ -43,6 +47,8 @@ fun SettingsScreen(
     ) {
     val themeMode by settingsViewModel.themeMode.collectAsStateWithLifecycle()
     val connectionState by bleViewModel.state.collectAsStateWithLifecycle()
+    val recipientEmail by settingsViewModel.recipientEmail.collectAsStateWithLifecycle()
+    val debugMode by settingsViewModel.debugMode.collectAsStateWithLifecycle()
     val permissions = rememberBlePermissionsState()
 
     Column(
@@ -85,6 +91,54 @@ fun SettingsScreen(
                         ConnectionState.DISCONNECTED -> "Pair Device"
                     }
                 )
+            }
+        }
+
+        SettingsSection(title = "Alerts") {
+            OutlinedTextField(
+                value = recipientEmail,
+                onValueChange = settingsViewModel::setRecipientEmail,
+                label = { Text("Notify email on impact") },
+                placeholder = { Text("emergency@example.com") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+            )
+            Text(
+                text = if (recipientEmail.isBlank())
+                    "No email configured. Impact alerts will only fire local notifications."
+                else
+                    "Will email $recipientEmail when an impact is detected.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        SettingsSection(title = "Debug") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "Debug Mode", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = "Lowers vest impact threshold for testing.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = debugMode,
+                    onCheckedChange = settingsViewModel::setDebugMode
+                )
+            }
+
+            Button(
+                onClick = bleViewModel::fireTestImpact,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = connectionState == ConnectionState.CONNECTED
+            ) {
+                Text("Trigger test impact.")
             }
         }
     }

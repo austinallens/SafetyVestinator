@@ -1,6 +1,7 @@
 package com.example.safetyvestinator
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -30,6 +31,8 @@ import androidx.compose.ui.platform.LocalContext
 import com.example.safetyvestinator.data.NotificationHelper
 import org.osmdroid.config.Configuration
 import androidx.preference.PreferenceManager
+import com.example.safetyvestinator.data.ConnectionState
+import com.example.safetyvestinator.data.EmailSender
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,7 +61,12 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(Unit) {
                 NotificationHelper.ensureChannel(context)
                 bleViewModel.impacts.collect {
+                    Log.d("MainActivity", "Impact event received")
                     NotificationHelper.showImpact(context)
+                    EmailSender.sendImpactAlert(
+                        recipientEmail = settingsViewModel.recipientEmail.value,
+                        location = bleViewModel.location.value
+                    )
                 }
             }
 
@@ -80,6 +88,15 @@ fun SafetyVestinatorApp(
     bleViewModel: BleViewModel
 ) {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
+    val debugMode by settingsViewModel.debugMode.collectAsStateWithLifecycle()
+    val connectionState by bleViewModel.state.collectAsStateWithLifecycle()
+
+    // Push Debug mode to ESP whenever changes
+    LaunchedEffect(debugMode, connectionState) {
+        if (connectionState == ConnectionState.CONNECTED) {
+            bleViewModel.setDebugMode(debugMode)
+        }
+    }
 
     NavigationSuiteScaffold(
         navigationSuiteItems = {
@@ -104,7 +121,8 @@ fun SafetyVestinatorApp(
             when (currentDestination) {
                 AppDestinations.HOME -> HomeScreen(
                     modifier = screenModifier,
-                    bleViewModel = bleViewModel
+                    bleViewModel = bleViewModel,
+                    debugMode = debugMode
                 )
                 AppDestinations.CALENDAR -> CalendarScreen(screenModifier)
                 AppDestinations.SETTINGS -> SettingsScreen(

@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -46,7 +47,8 @@ import com.example.safetyvestinator.ui.VestMapView
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
-    bleViewModel: BleViewModel
+    bleViewModel: BleViewModel,
+    debugMode: Boolean = false
 ) {
     val today = remember { LocalDate.now() }
     val formatter = remember {
@@ -63,6 +65,23 @@ fun HomeScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        if (debugMode) {
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "DEBUG MODE - Impact Threshold Lowered",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
         Text(
             text = buildAnnotatedString {
                 append("Hi! It is ")

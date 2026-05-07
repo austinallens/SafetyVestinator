@@ -23,4 +23,26 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { repo.setThemeMode(mode) }
     }
+
+    val recipientEmail: StateFlow<String> = repo.recipientEmail
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = ""
+        )
+
+    fun setRecipientEmail(email: String) {
+        viewModelScope.launch { repo.setRecipientEmail(email) }
+    }
+
+    val debugMode: StateFlow<Boolean> = repo.debugMode
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false
+        )
+
+    fun setDebugMode(enabled: Boolean) {
+        viewModelScope.launch { repo.setDebugMode(enabled) }
+    }
 }
